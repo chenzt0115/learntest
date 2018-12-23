@@ -1,0 +1,171 @@
+package com.test.util;
+
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.math.BigDecimal;
+import java.util.List;
+
+import org.apache.poi.hssf.usermodel.HSSFWorkbook;
+import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.ss.usermodel.CellStyle;
+import org.apache.poi.ss.usermodel.DataFormat;
+import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+
+public class ModifyExcel {
+	/** 错误信息 */
+	private String errorInfo;
+
+	/**
+	 * @描述：验证excel文件
+	 * @作者：
+	 * @时间：2012-08-29 下午16:27:15
+	 * @参数：@param filePath　文件完整路径
+	 * @参数：@return
+	 * @返回值：boolean
+	 */
+	public boolean validateExcel(String filePath) {
+		/** 检查文件名是否为空或者是否是Excel格式的文件 */
+
+		if (filePath == null
+				|| !(WDWUtil.isExcel2003(filePath) || WDWUtil
+						.isExcel2007(filePath))) {
+			errorInfo = "文件名不是excel格式";
+			return false;
+		}
+
+		/** 检查文件是否存在 */
+		File file = new File(filePath);
+		if (file == null || !file.exists()) {
+			errorInfo = "文件不存在";
+			return false;
+		}
+		return true;
+	}
+
+	/**
+	 * 
+	 * @param fileName
+	 * @param dataList
+	 */
+	public void batchModifyXLSX(String fileName, List<Object[]> dataList) {
+		
+	}
+	
+	public void modifyXLSX(String fileName, int row, int col, Object value) {
+		try {
+			/** 验证文件是否合法 */
+			if (!validateExcel(fileName)) {
+				System.out.println(errorInfo);
+				return;
+			}
+
+			/** 判断文件的类型，是2003还是2007 */
+			boolean isExcel2003 = true;
+			if (WDWUtil.isExcel2007(fileName)) {
+				isExcel2003 = false;
+			}
+
+			modify(fileName, isExcel2003, row, col, value);
+		} catch (Exception ex) {
+			ex.printStackTrace();
+		}
+	}
+
+	/**
+	 * @描述：根据流读取Excel文件
+	 * @作者：
+	 * @时间：2012-08-29 下午16:40:15
+	 * @参数：@param inputStream
+	 * @参数：@param isExcel2003
+	 * @参数：@return
+	 * @返回值：List
+	 */
+	public void modify(String fileName, boolean isExcel2003, int row, int col,
+			Object value) {
+		InputStream is = null;
+		FileOutputStream outStream = null;
+		try {
+			/** 调用本类提供的根据流读取的方法 */
+			File file = new File(fileName);
+			is = new FileInputStream(file);
+
+			/** 根据版本选择创建Workbook的方式 */
+			Workbook wb = null;
+			if (isExcel2003) {
+				wb = new HSSFWorkbook(is);
+			} else {
+				wb = new XSSFWorkbook(is);
+			}
+			modify(wb, row, col, value);
+			is.close();
+
+			// 文件输出流
+			outStream = new FileOutputStream(file);
+			wb.write(outStream);
+			outStream.flush();
+			outStream.close();
+		} catch (IOException e) {
+			e.printStackTrace();
+		} finally {
+			if (is != null) {
+				try {
+					is.close();
+				} catch (IOException e) {
+					is = null;
+					e.printStackTrace();
+				}
+			}
+			if (outStream != null) {
+				try {
+					outStream.close();
+				} catch (IOException e) {
+					outStream = null;
+					e.printStackTrace();
+				}
+			}
+		}
+	}
+
+	/**
+	 * @描述：读取数据
+	 * @作者：
+	 * @时间：2012-08-29 下午16:50:15
+	 * @参数：@param Workbook
+	 * @参数：@return
+	 * @返回值：List<List<String>>
+	 */
+	private void modify(Workbook wb, int row, int col, Object value) {
+		/** 得到第一个shell */
+		Sheet sheet = wb.getSheetAt(0);
+		CellStyle cellStyle = wb.createCellStyle();
+		DataFormat format = wb.createDataFormat();
+		cellStyle.setDataFormat(format.getFormat("@"));
+
+		Cell cell = sheet.getRow(row).getCell(col);
+		if (null != cell) {
+			// 以下是判断数据的类型
+			if (value instanceof String) {
+				cell.setCellStyle(cellStyle);
+				cell.setCellValue((String) value);
+			} else if (value instanceof Integer) {
+				cell.setCellValue((double) value);
+			} else if (value instanceof Double) {
+				cell.setCellValue((double) value);
+			} else if (value instanceof BigDecimal) {
+				cell.setCellValue((double) value);
+			} else if (value instanceof Boolean) {
+				cell.setCellValue((boolean) value);
+			}
+		}
+	}
+
+	public static void main(String[] args) {
+		ModifyExcel poi = new ModifyExcel();
+		poi.modifyXLSX("E:\\test\\test.xlsx", 0, 5, "林增贤");
+	}
+}
